@@ -1,6 +1,5 @@
-import itertools
-from utils import Deck
-
+from utils import isRun, score_hand
+from cards import Deck
 
 class CribbageGame:
     def __init__(self, player_1, player_2):
@@ -18,6 +17,7 @@ class CribbageGame:
 
     def start_game(self):
         with open('game_log.txt', 'a') as file:  # Open a file in append mode
+            file.write("Points scored during Pegging are not considered.\n\n")
             while self.player1.score <= 121 and self.player2.score <= 121:
                 self.rounds += 1
                 self.deck.shuffle()
@@ -49,11 +49,11 @@ class CribbageGame:
                 self.counting_phase()
 
                 # Log the crib
-                file.write(f"Crib Hand: {[card.value for card in crib_hand]}\n")
+                file.write(f"Crib Hand: {[(card.value, card.suit) for card in crib_hand]}\n")
                 file.write(f"Crib Owner: {'Player 1' if crib_owner == self.player1 else 'Player 2'}\n")
 
                 # Score the crib
-                crib_score = self.score_hand(crib_hand, self.starter_card)
+                crib_score = score_hand(crib_hand, self.starter_card)
                 crib_owner.updateScore(crib_score)
 
                 # Log the scores after counting
@@ -66,18 +66,6 @@ class CribbageGame:
         else:
             return self.player2.crib
 
-    def score_hand(self, hand, starter_card):
-        total_score = 0
-        all_cards = hand + [starter_card]
-
-        total_score += self.findPairs(all_cards)
-        total_score += self.findRuns(all_cards)
-        total_score += self.findFifteens(all_cards)
-        total_score += self.scoreFlush(hand, starter_card)
-        total_score += self.scoreNobs(hand, starter_card)
-
-        return total_score
-
     def deal_cards(self):
         if self.deck.getLength() < 12:  # If not enough cards to deal another round
             self.deck.reset()  # Assuming there's a reset method that repopulates and shuffles the deck
@@ -89,44 +77,8 @@ class CribbageGame:
         self.starter_card = self.deck.getCut()
 
     def counting_phase(self):
-        self.player1.score += self.score_hand(self.player1.original_hand, self.starter_card)
-        self.player2.score += self.score_hand(self.player2.original_hand, self.starter_card)
-
-    def findPairs(self, cards):
-        count = 0
-        values = [card.value for card in cards]
-        for value in set(values):
-            occurrences = values.count(value)
-            if occurrences > 1:
-                count += (occurrences * (occurrences - 1)) // 2
-        return 2 * count
-
-    def findRuns(self, cards):
-        score = 0
-        sorted_cards = sorted(cards, key=lambda x: x.value)
-        length = len(sorted_cards)
-        for run_length in range(3, length + 1):
-            for start in range(length - run_length + 1):
-                run = sorted_cards[start:start + run_length]
-                if all(run[i].value - run[i - 1].value == 1 for i in range(1, run_length)):
-                    score += run_length
-        return score
-
-    def findFifteens(self, cards):
-        score = 0
-        for r in range(2, len(cards) + 1):
-            for combo in itertools.combinations(cards, r):
-                if sum(card.value for card in combo) == 15:
-                    score += 2
-        return score
-
-    def scoreFlush(self, hand, starter_card):
-        if all(card.suit == hand[0].suit for card in hand):
-            return 5 if all(card.suit == starter_card.suit for card in hand + [starter_card]) else 4
-        return 0
-
-    def scoreNobs(self, hand, starter_card):
-        return 1 if any(card.name == 'Jack' and card.suit == starter_card.suit for card in hand) else 0
+        self.player1.score += score_hand(self.player1.original_hand, self.starter_card)
+        self.player2.score += score_hand(self.player2.original_hand, self.starter_card)
 
     def play_phase(self):
         history = []  # Tracks all cards played in the current round
@@ -148,7 +100,9 @@ class CribbageGame:
                         # Check for scoring moves
                         self.score_play(history, running_total)
 
-                        if running_total == 31:
+                        if running_total == 15:
+                            player.updateScore(2)
+                        elif running_total == 31:
                             player.updateScore(2)  # Score for hitting 31 exactly
                             running_total = 0
                             history.clear()  # Reset for the next sequence
@@ -186,18 +140,8 @@ class CribbageGame:
         # Scoring for runs
         for length in range(3, len(history) + 1):
             last_n_cards = history[-length:]
-            if self.isRun(last_n_cards):
+            if isRun(last_n_cards):
                 self.current_player.updateScore(length)  # Score is the length of the run
-
-        # Check for fifteens
-        if running_total == 15:
-            self.current_player.updateScore(2)  # Score for reaching fifteen
-
-    def isRun(self, cards):
-        if len(cards) < 3:
-            return False
-        sorted_cards = sorted(cards, key=lambda x: x.value)
-        return all(sorted_cards[i].value - sorted_cards[i - 1].value == 1 for i in range(1, len(sorted_cards)))
 
     def get_opponent(self, current_player):
         return self.player2 if current_player == self.player1 else self.player1
