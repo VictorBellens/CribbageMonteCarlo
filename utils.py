@@ -40,7 +40,7 @@ class Deck:
                 name = "King"
             else:
                 name = ""
-            for suit in ["♣", "♦", "♥", "♠"]:
+            for suit in ["Spades", "Diamonds", "Hearts", "Clubs"]:
                 self.deck.append(Card(name, suit, value))
 
     def getLength(self):
@@ -58,14 +58,16 @@ class Deck:
         return self.deck.pop(index)
 
     def shuffle(self):
-        cut = self.getLength() // 2
-        deck1, deck2 = self.deck[:cut], self.deck[cut:]
+        # Get the length of the deck
+        n = self.getLength()
 
-        for index, item in enumerate(deck2):
-            insert_index = index * 2 + 1
-            deck1.insert(insert_index, item)
+        # Loop over the deck in reverse order
+        for i in range(n - 1, 0, -1):
+            # Pick a random index from 0 to i
+            j = random.randint(0, i)
 
-        self.deck = deck1
+            # Swap the current card with the randomly selected card
+            self.deck[i], self.deck[j] = self.deck[j], self.deck[i]
 
     def getDeck(self):
         for i in self.deck:

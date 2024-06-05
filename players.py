@@ -15,7 +15,8 @@ class PlayerA:
         self.score = 0  # max 121
 
     def laysAway(self):
-        layaway = [self.hand.pop(random.randint(0, len(self.hand))), self.hand.pop(random.randint(0, len(self.hand)))]
+        layaway = [self.hand.pop(random.randint(0, len(self.hand) - 1)),
+                   self.hand.pop(random.randint(0, len(self.hand) - 1))]
         self.original_hand = self.hand
         return layaway
 
@@ -33,13 +34,22 @@ class PlayerA:
     def updateScore(self, points):
         self.score += points
 
+    def getHand(self):
+        hands = []
+        for card in self.original_hand:
+            hands.append((card.value, card.suit))
+        return hands
+
 
 class PlayerB(PlayerA):
     def __init__(self, crib):
         super().__init__(crib)
 
     def laysAway(self):
-        self.hand.sort()
+        sorted_hand = sorted(self.hand, key=lambda card: card.value)
+        self.hand = sorted_hand
+        self.original_hand = self.hand
+
         max_score = -1
         min_score = 99
         best_combination = None
